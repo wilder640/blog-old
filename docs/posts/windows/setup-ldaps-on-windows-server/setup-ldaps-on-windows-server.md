@@ -1,6 +1,6 @@
 ---
-title: AD 網域控制站啟用 LDAPS
-description: 紀錄如何使用  Windows  Entriprise  CA  產生憑證然後在網域控制站上安裝憑證並啟用 LDAP over SSL（LDAPS），以及如何使用 ldp.exe 驗證連線
+title: AD 網域控制站啟用 LDAPS 指南
+description: 本文紀錄如何透過 Windows Enterprise CA 產生憑證，並於網域控制站 (DC) 安裝與啟用 LDAP over SSL (LDAPS)，最後使用 ldp.exe 驗證連線設定。
 date: 2025-12-01
 categories:
     - Microsoft
@@ -12,111 +12,114 @@ banner: img.png
 draft: false
 ---
 
-<h2>目錄</h2>
-
-- [1. 環境說明](#1-環境說明)
-- [2. 憑證條件](#2-憑證條件)
-- [3. 建立憑證範本](#3-建立憑證範本)
-- [4. 發佈範本](#4-發佈範本)
-- [5. 憑證請求](#5-憑證請求)
-- [6. 測試](#6-測試)
-
 ## 1. 環境說明
 
-- Windows版本：Windows Server 2022 Standard
-- Windows CA  類型：Entriprise  CA
+本文操作示範所使用的系統環境如下：
+
+- **Windows 版本**：Windows Server 2022 Standard
+- **Windows CA 類型**：Enterprise CA (企業級 CA)
 
 ## 2. 憑證條件
 
-LDAPS  所使用的憑證需符合以下條件
+LDAPS 所使用的憑證需符合以下條件：
 
-- 在 Local Computer\Personal 或 NTDS\Personal，且有私鑰。
-
-- EKU 含 Server Authentication (1.3.6.1.5.5.7.3.1)。
-
-- Subject/SAN 有 DC 的 FQDN。
-
-- 憑證鏈完整且 client/DC 都信任 Root CA。
-
-- 沒有啟用強式私鑰保護，CSP/KSP 是 Schannel 支援的。
+- **儲存位置**：存放於 Local Computer\Personal 或 NTDS\Personal，且必須包含私密金鑰。
+- **增強金鑰用法 (EKU)**：須含有 Server Authentication (1.3.6.1.5.5.7.3.1)。
+- **主體名稱**：Subject 或 SAN (主體別名) 需包含網域控制站 (DC) 的 FQDN。
+- **憑證鏈結**：憑證鏈必須完整，且 Client 與 DC 都必須信任 Root CA。
+- **安全性規範**：沒有啟用強式私鑰保護，且 CSP/KSP 是 Schannel 所支援的。
 
 ## 3. 建立憑證範本
 
-![Create Certificate Template](images/img-1.png)
+首先，我們需要在 CA 上建立一個專供 LDAPS 使用的範本。
 
-![Create Certificate Template](images/img-2.png)
+![Open Certificate Templates Console](images/img-1.png)
 
-![Create Certificate Template](images/img-3.png)
+![Duplicate Kerberos Authentication Template](images/img-2.png)
 
-範本顯示名稱可自定義，有效期間及更新間隔則依需求更改
+![Template Properties Dialog](images/img-3.png)
 
-![General](images/img-4.png)
+範本顯示名稱可根據需求自定義，有效期間及更新間隔則依組織需求更改。
 
-勾選允許匯出私密金鑰
+![General Settings](images/img-4.png)
 
-![Request Handing](images/img-5.png)
+在「要求處理」標籤頁中，務必勾選**允許匯出私密金鑰**。
 
-需勾選DNS 名稱 及 服務主題名稱 (SPN)
+![Allow Private Key Export](images/img-5.png)
 
-![Subject Name](images/img-6.png)
+在「主體名稱」標籤頁中，需勾選 **DNS 名稱** 及 **服務主體名稱 (SPN)**。
+
+![Subject Name Configuration](images/img-6.png)
 
 ## 4. 發佈範本
 
-![Certificate Template to Issue](images/img-7.png)
+範本建立完成後，需將其發佈才能供申請使用。
 
-![Certificate Template to Issue](images/img-8.png)
+![New Certificate Template to Issue](images/img-7.png)
+
+![Select LDAPS Template](images/img-8.png)
 
 ## 5. 憑證請求
 
-於網域控制站執行憑證請求，若有多台網域控制站均要開啟LDAPS功能則需要在每一台均執行一次
+請於網域控制站執行憑證請求。若環境中有多台網域控制站均要開啟 LDAPS 功能，則需要在每一台機器上分別執行一次。
 
-![RUN](images/img-9.png)
+於網域控制站執行 `mmc` 並新增憑證管理單元。
 
-![MMC](images/img-10.png)
+![Run MMC](images/img-9.png)
 
-![Add/Remove Snap-in](images/img-11.png)
+![Add Snap-in](images/img-10.png)
 
-![Add Certificates](images/img-12.png)
+![Select Certificates Snap-in](images/img-11.png)
 
-![Computer account ](images/img-13.png)
+![Select Computer Account](images/img-12.png)
 
-![Local Computer](images/img-14.png)
+![Select Local Computer](images/img-13.png)
 
-![Finish](images/img-15.png)
+![Finish Snap-in Setup](images/img-14.png)
 
-![Request New Certificate](images/img-21.png)
+![Confirm Snap-in List](images/img-15.png)
 
-![Request New Certificate](images/img-22.png)
+接著在「個人」憑證資料夾中，執行「要求新憑證」。
 
-![Request New Certificate](images/img-23.png)
+![Start Request New Certificate](images/img-21.png)
 
-![Request New Certificate](images/img-24.png)
+![Before You Begin](images/img-22.png)
 
-![Request New Certificate](images/img-25.png)
+![Select Certificate Enrollment Policy](images/img-23.png)
 
-![Request New Certificate](images/img-26.png)
+勾選剛才發佈的 LDAPS 範本進行申請。
+
+![Select LDAPS Template](images/img-24.png)
+
+![Enrollment Progress](images/img-25.png)
+
+![Certificate Enrollment Success](images/img-26.png)
 
 ## 6. 測試
 
-可以於網域控制站使用ldp.exe測試LDAPS是否可以正常連線
+憑證安裝後，可以於網域控制站使用 `ldp.exe` 測試 LDAPS 是否可以正常連線。
 
-![RUN](images/img-16.png)
+![Run LDP Tool](images/img-16.png)
 
-![LDP](images/img-17.png)
+![LDP Main Interface](images/img-17.png)
 
-![Connect](images/img-18.png)
+點選選單中的「連線」->「連線...」。
 
-伺服器填寫  localhost，連接埠填寫  636，勾選  SSL，點擊確認
+![Select Connect](images/img-18.png)
 
-![Connect](images/img-19.png)
+伺服器填寫 `localhost`，連接埠填寫 `636`，並勾選 **SSL**，點擊確認。
 
-若成功會出現以下畫面
+![Configure Connection Settings](images/img-19.png)
 
-![Success](images/img-27.png)
+**驗證結果：**
 
-若連線失敗會出現以下畫面
+若連線成功，畫面將會顯示相關的憑證與連線資訊。
 
-![Ｆailed](images/img-20.png)
+![LDAPS Connection Success](images/img-27.png)
+
+若連線失敗，則會出現以下錯誤畫面。
+
+![LDAPS Connection Failed](images/img-20.png)
 
 <div class="page-break"/>
 

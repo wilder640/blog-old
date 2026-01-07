@@ -1,5 +1,5 @@
 ---
-title: CyberArk PSM 自定義 SSH 連線字型與大小
+title: 自定義 CyberArk PAM Self-Hosted 中使用  PSM-SSH 連線時的字型與大小
 description: 說明如何透過修改 PSM 伺服器登錄檔 (Registry)，統一設定 PSM-SSH 連線組件的字型與字體大小。
 date: 2026-01-07
 comment: true
@@ -17,12 +17,13 @@ draft: false
 <h2>目錄</h2>
 
 - [1. 前言](#1-前言)
-- [2. 準備設定範本](#2-準備設定範本)
-- [3. 修改 Default Profile](#3-修改-default-profile)
-    - [3.1. 載入預設使用者登錄區](#31-載入預設使用者登錄區)
-    - [3.2. 修改並合併登錄檔路徑](#32-修改並合併登錄檔路徑)
-    - [3.3. 解除載入登錄區](#33-解除載入登錄區)
-- [4. 清理現有 Shadow User 使設定生效](#4-清理現有-shadow-user-使設定生效)
+- [2. 環境說明](#2-環境說明)
+- [3. 準備設定範本](#3-準備設定範本)
+- [4. 修改 Default Profile](#4-修改-default-profile)
+    - [4.1. 載入預設使用者登錄區](#41-載入預設使用者登錄區)
+    - [4.2. 修改並合併登錄檔路徑](#42-修改並合併登錄檔路徑)
+    - [4.3. 解除載入登錄區](#43-解除載入登錄區)
+- [5. 清理現有 Shadow User 使設定生效](#5-清理現有-shadow-user-使設定生效)
 
 <div class="page-break"/>
 
@@ -32,7 +33,12 @@ draft: false
 
 這是因為 PSM 採用 **「陰影使用者 (Shadow Users)」** 機制：每次連線時，系統都會動態建立一個臨時帳號來執行連線程式。為了讓以後「每一位」新產生的 Shadow User 都能看到大字體，我們必須修改 PSM 伺服器上的 **「預設使用者設定檔 (Default User Profile)」**。
 
-## 2. 準備設定範本
+## 2. 環境說明
+
+- PAM版本： 14.2
+- Windows版本：Windows Server 2016
+
+## 3. 準備設定範本
 
 由於 PuTTY 的外觀設定機碼包含複雜的編碼，手動撰寫極易出錯。我們建議在任一台有安裝 PuTTY 的電腦（不一定要在 PSM 伺服器上）先產生正確的設定範本。
 
@@ -57,11 +63,11 @@ draft: false
 
     ![Save Registry File as DefaultPutty.reg](images/img-5.png)
 
-## 3. 修改 Default Profile
+## 4. 修改 Default Profile
 
 取得 `DefaultPutty.reg` 後，將其複製到 **PSM 伺服器**桌面。接下來我們需要利用「載入登錄區」技術，將設定強行寫入系統底層。
 
-### 3.1. 載入預設使用者登錄區
+### 4.1. 載入預設使用者登錄區
 
 !!! info "原理說明：什麼是載入登錄區 (Load Hive)？"
     登錄檔在硬碟中是以實體檔案（Hive）的形式存在。平常開啟 `regedit` 只能改到「目前登入帳號」的設定；但我們現在要改的是「未來才要產生的帳號」。
@@ -85,7 +91,7 @@ draft: false
 
     ![Enter Hive Key Name as DefaultPutty](images/img-9.png)
 
-### 3.2. 修改並合併登錄檔路徑
+### 4.2. 修改並合併登錄檔路徑
 
 因為匯出的 `.reg` 檔案原始路徑是指向「目前使用者 (HKEY_CURRENT_USER)」，我們必須將其修改為指向我們剛才「外掛」進來的範本路徑。
 
@@ -100,13 +106,13 @@ draft: false
     ![Replace Registry Path in Notepad](images/img-11.png)
 
     !!! warning "關鍵提醒"
-        取代路徑中的 `{==DefaultPutty==}` 名稱，必須與 3.1 節步驟 5 中手動定義的機碼名稱完全一致。
+        取代路徑中的 `{==DefaultPutty==}` 名稱，必須與 4.1 節步驟 5 中手動定義的機碼名稱完全一致。
 
 3. 儲存後，**雙擊執行** `DefaultPutty.reg` 進行合併。
 
     ![Merge Registry Settings into DefaultPutty Hive](images/img-12.png)
 
-### 3.3. 解除載入登錄區
+### 4.3. 解除載入登錄區
 
 完成寫入後，必須安全地「拔除」這個範本檔案。
 
@@ -120,7 +126,7 @@ draft: false
 
     ![Confirm Unload Hive Dialog](images/img-15.png)
 
-## 4. 清理現有 Shadow User 使設定生效
+## 5. 清理現有 Shadow User 使設定生效
 
 此設定僅對「新產生」的帳號有效。如果 PSM 伺服器上已經存在舊的 Shadow User 紀錄（名稱通常為 `PSM-` 開頭加上一串數字），必須將其刪除才會套用此設定。
 
